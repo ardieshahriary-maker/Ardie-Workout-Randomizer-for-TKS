@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Bodyweight Workout Randomizer</title>
+	<style>
+		:root {
+			color-scheme: light;
+			font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+			color: #18352d;
+			background: #f3f7f3;
+		}
+		* { box-sizing: border-box; }
+		body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+		main { width: min(100%, 680px); }
+		.eyebrow { margin: 0 0 8px; color: #39836b; font-size: .78rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+		h1 { margin: 0; font-size: clamp(2rem, 7vw, 3.2rem); letter-spacing: -.05em; }
+		.intro { margin: 10px 0 26px; color: #5b6d65; line-height: 1.6; }
+		.workouts { display: grid; gap: 12px; }
+		.workout { display: flex; align-items: center; gap: 14px; padding: 17px; background: white; border: 1px solid #e1eae3; border-radius: 16px; box-shadow: 0 5px 18px #204a3510; }
+		.number { display: grid; place-items: center; flex: 0 0 44px; height: 44px; border-radius: 13px; background: #e9f4ed; color: #247150; font-weight: 800; }
+		.details { min-width: 0; flex: 1; }
+		.details h2 { margin: 0; font-size: 1.05rem; }
+		.details p { margin: 4px 0 0; color: #68776f; font-size: .9rem; }
+		button { font: inherit; cursor: pointer; }
+		.info { width: 36px; height: 36px; flex: 0 0 36px; border: 1px solid #d7e5db; border-radius: 50%; background: white; color: #287353; font-weight: 800; }
+		.info:hover, .info:focus-visible { background: #e9f4ed; outline: 2px solid #39836b; outline-offset: 2px; }
+		.reroll { width: 100%; margin-top: 20px; padding: 14px 20px; border: 0; border-radius: 13px; background: #247150; color: white; font-size: 1rem; font-weight: 750; box-shadow: 0 6px 14px #24715030; }
+		.reroll:hover { background: #195d40; }
+		.reroll:focus-visible { outline: 3px solid #83c9a5; outline-offset: 3px; }
+		.note { margin: 15px 0 0; color: #748078; font-size: .82rem; text-align: center; }
+		dialog { width: min(calc(100% - 32px), 420px); padding: 24px; border: 0; border-radius: 18px; color: #18352d; box-shadow: 0 18px 60px #10281d44; }
+		dialog::backdrop { background: #10281d88; }
+		dialog h2 { margin: 0 0 10px; }
+		dialog p { color: #53675c; line-height: 1.6; }
+		.close { padding: 9px 16px; border: 0; border-radius: 9px; background: #e9f4ed; color: #247150; font-weight: 700; }
+		@media (max-width: 420px) { body { padding: 20px 15px; } .workout { padding: 14px 12px; gap: 10px; } .number { flex-basis: 38px; height: 38px; } }
+	</style>
+</head>
+<body>
+	<main>
+		<p class="eyebrow">No equipment needed</p>
+		<h1>Workout randomizer</h1>
+		<p class="intro">Get three bodyweight moves with a fresh number of reps from 1 to 30. Tap the info button if you need a quick how-to.</p>
+		<section class="workouts" id="workouts" aria-label="Your randomized workouts" aria-live="polite"></section>
+		<button class="reroll" id="reroll" type="button">Reroll</button>
+		<p class="note">Move at your own pace, and stop if anything hurts.</p>
+	</main>
+
+	<dialog id="exerciseInfo" aria-labelledby="dialogTitle">
+		<h2 id="dialogTitle"></h2>
+		<p id="dialogText"></p>
+		<form method="dialog"><button class="close">Got it</button></form>
+	</dialog>
+
+	<script>
+		'use strict';
+
+		const exercises = [
+			{ name: 'Air squats', info: 'Stand with feet about shoulder-width apart. Bend your knees and hips to lower comfortably, keeping your chest up, then press through your feet to stand.' },
+			{ name: 'Push-ups', info: 'Start in a high plank with hands under your shoulders. Keep your body in a straight line as you lower your chest, then press back up. Knees-down push-ups are a good option.' },
+			{ name: 'Reverse lunges', info: 'Stand tall, step one foot back, and bend both knees until comfortable. Push through the front foot to return to standing; alternate legs.' },
+			{ name: 'Glute bridges', info: 'Lie on your back with knees bent and feet flat. Squeeze your glutes to lift your hips, pause briefly, then lower with control.' },
+			{ name: 'Mountain climbers', info: 'Begin in a high plank. Bring one knee toward your chest, return it, and switch sides. Keep your hands planted and use a steady pace.' },
+			{ name: 'Plank shoulder taps', info: 'From a high plank, tap one shoulder with the opposite hand while keeping your hips as still as you can. Alternate sides; each tap is one rep.' },
+			{ name: 'Bird dogs', info: 'Start on hands and knees. Extend one arm forward and the opposite leg back, keeping your back steady. Return and switch sides; each side is one rep.' },
+			{ name: 'Calf raises', info: 'Stand tall, using a wall for balance if needed. Rise onto the balls of your feet, then lower your heels slowly.' },
+			{ name: 'Dead bugs', info: 'Lie on your back with arms up and knees bent. Slowly lower one arm and the opposite leg, keeping your lower back gently against the floor. Return and switch sides.' },
+			{ name: 'Wall sits', info: 'Lean your back against a wall and slide down to a comfortable squat position. Hold for one slow count per rep, then stand. Stop if your knees feel uncomfortable.' },
+			{ name: 'Standing knee drives', info: 'Stand tall and lift one knee toward your waist, then lower it with control. Alternate sides; each lift is one rep.' },
+			{ name: 'Supermans', info: 'Lie face down with arms extended. Gently lift your arms and legs a little off the floor, pause, and lower. Keep the movement comfortable and controlled.' },
+			{ name: 'Side lunges', info: 'Stand with feet apart. Bend one knee and shift your hips toward that side while the other leg stays straighter. Push back to center and alternate sides.' },
+			{ name: 'Incline push-ups', info: 'Place your hands on a stable wall or counter. Keep your body straight, bend your elbows to bring your chest toward it, then press away.' },
+			{ name: 'Marching glute bridges', info: 'Lie on your back, lift your hips into a bridge, and gently raise one foot a little. Set it down, switch sides, then lower your hips. Each lift is one rep.' },
+			{ name: 'Standing side leg raises', info: 'Stand tall and hold a wall for balance. Lift one straight leg out to the side without leaning, then lower slowly. Alternate sides.' },
+			{ name: 'Bird-dog crunches', info: 'On hands and knees, extend the opposite arm and leg. Bring elbow and knee gently toward each other, extend again, and switch sides.' },
+			{ name: 'Shoulder blade squeezes', info: 'Stand or sit tall with arms relaxed. Draw your shoulder blades gently together, pause, then release. Keep your shoulders away from your ears.' },
+			{ name: 'Prone swimmers', info: 'Lie face down with arms extended. Lift one arm and the opposite leg slightly, lower, and alternate sides with a small, controlled range.' },
+			{ name: 'Single-leg balance', info: 'Stand near a wall for support. Lift one foot slightly and balance for one slow count, then switch legs. Each count on either side is one rep.' },
+			{ name: 'Knee push-ups', info: 'Kneel and place your hands just wider than your shoulders. Keep a straight line from knees to head, lower your chest, and press back up.' },
+			{ name: 'Alternating toe taps', info: 'Lie on your back with knees bent and feet on the floor. Brace gently and tap one foot forward, return it, then switch sides.' },
+			{ name: 'Wall push-ups', info: 'Stand facing a wall with hands at chest height. Keep your body straight, bend your elbows to bring your chest toward the wall, then push away.' },
+			{ name: 'Standing cross-body knee lifts', info: 'Stand tall and lift one knee toward the opposite side of your body. Lower with control and alternate. Keep the movement easy and balanced.' },
+			{ name: 'Prone W raises', info: 'Lie face down with elbows bent like a W. Gently lift your hands and elbows, squeeze your shoulder blades, then lower slowly.' },
+			{ name: 'Lateral steps', info: 'Stand with knees soft and take one controlled step to the side, then bring your feet together. Alternate directions; each step is one rep.' },
+			{ name: 'Standing hip extensions', info: 'Stand tall and hold a wall for balance. Move one leg straight behind you a short distance without arching your back, then return. Alternate sides.' },
+			{ name: 'Heel-to-toe raises', info: 'Stand near a wall. Lift your toes while keeping your heels down, lower, then rise onto your toes and lower. That sequence is one rep.' },
+			{ name: 'Knee hugs', info: 'Stand tall, gently bring one knee toward your chest, and lower it. Alternate sides, using a wall for balance if needed.' },
+			{ name: 'Forearm plank shoulder taps', info: 'Hold a forearm plank from your knees or toes. Lift one hand to tap the opposite shoulder, replace it, and switch sides; each tap is one rep.' }
+		];
+
+		const workoutList = document.getElementById('workouts');
+		const dialog = document.getElementById('exerciseInfo');
+		const dialogTitle = document.getElementById('dialogTitle');
+		const dialogText = document.getElementById('dialogText');
+
+		function randomInt(max) {
+			return Math.floor(Math.random() * max);
+		}
+
+		function reroll() {
+			const pool = [...exercises];
+			const picks = [];
+			for (let i = 0; i < 3; i++) {
+				picks.push(pool.splice(randomInt(pool.length), 1)[0]);
+			}
+			workoutList.replaceChildren(...picks.map((exercise, index) => {
+				const reps = randomInt(30) + 1;
+				const card = document.createElement('article');
+				card.className = 'workout';
+
+				const number = document.createElement('span');
+				number.className = 'number';
+				number.textContent = String(index + 1).padStart(2, '0');
+				number.setAttribute('aria-hidden', 'true');
+
+				const details = document.createElement('div');
+				details.className = 'details';
+				const title = document.createElement('h2');
+				title.textContent = exercise.name;
+				const amount = document.createElement('p');
+				amount.textContent = `${reps} ${reps === 1 ? 'rep' : 'reps'}`;
+				details.append(title, amount);
+
+				const info = document.createElement('button');
+				info.className = 'info';
+				info.type = 'button';
+				info.textContent = 'i';
+				info.setAttribute('aria-label', `How to do ${exercise.name}`);
+				info.addEventListener('click', () => {
+					dialogTitle.textContent = exercise.name;
+					dialogText.textContent = exercise.info;
+					dialog.showModal();
+				});
+				card.append(number, details, info);
+				return card;
+			}));
+		}
+
+		document.getElementById('reroll').addEventListener('click', reroll);
+		reroll();
+	</script>
+</body>
+</html>
